@@ -1,3 +1,7 @@
+package JMSChat;
+
+import java.net.InetAddress;
+import java.util.Calendar;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -10,49 +14,81 @@ import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
+/**
+ * 
+ * @author Christian Maran
+ * @date 2013-04-12
+ *
+ */
 public class JMSChatSender {
 
-  private static String user = ActiveMQConnection.DEFAULT_USER;
-  private static String password = ActiveMQConnection.DEFAULT_PASSWORD;
-  private static String url = ActiveMQConnection.DEFAULT_BROKER_URL;
-  private static String subject = "VSDBChat";
+	private String user = ActiveMQConnection.DEFAULT_USER;
+	private String password = ActiveMQConnection.DEFAULT_PASSWORD;
+	private String url = "failover://tcp://localhost:61616";
+	private String subject = "VSDBChat";
+	private String ip;
 	
-  public static void main( String[] args ) {
-		
-    // Create the connection.
-	Session session = null;
-	Connection connection = null;
-	MessageProducer producer = null;
-	Destination destination = null;
-		
-    try {
-    	
-		ConnectionFactory connectionFactory = new ActiveMQConnectionFactory( user, password, url );
-		connection = connectionFactory.createConnection();
-		connection.start();
+	private Session session = null;
+	private Connection connection = null;
+	private MessageProducer producer = null;
+	private Destination destination = null;
 
-		// Create the session
-		session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		destination = session.createTopic( subject );
-		  
-		// Create the producer.
-		producer = session.createProducer(destination);
-		producer.setDeliveryMode( DeliveryMode.NON_PERSISTENT );
-	
-		// Create the message
-		TextMessage message = session.createTextMessage( "MaxMustermann [ xxx.xxx.xxx.xxx ]: This message was sent at (ms): " + System.currentTimeMillis() );
-		producer.send(message);
-		System.out.println( message.getText() );
-      
-    } catch (Exception e) {
-	      System.out.println("[MessageProducer] Caught: " + e);
-	      e.printStackTrace();
-	} finally {
-		try { producer.close(); } catch ( Exception e ) {}
-		try { session.close(); } catch ( Exception e ) {}
-		try { connection.close(); } catch ( Exception e ) {}
+	public JMSChatSender (String usr, String pw, String url, String ip, String topic){
+		  user = usr;
+		  password = pw;
+		  this.url = "failover://tcp://" + url + ":61616";
+		  this.ip = ip;
+		  subject = topic;
 	}
-      
-  }
 	
+	
+	public void anmelden(){
+		try {
+			//Create Connection
+			ConnectionFactory connectionFactory = new ActiveMQConnectionFactory(user, password, url);
+			connection = connectionFactory.createConnection();
+			connection.start();
+
+			// Create the session
+			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+			destination = session.createTopic(subject);
+
+			// Create the producer.
+			producer = session.createProducer(destination);
+			producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+		}catch (Exception e) {
+			System.out.println("[MessageProducer] Caught: " + e);
+			e.printStackTrace();
+		}
+	}
+	
+	public void senden(String nachricht) {
+		try {
+			// Create the message
+			TextMessage message = session.createTextMessage("" + user + "<" + ip + "> " + Calendar.getInstance().getTime() + ": " + nachricht);
+			producer.send(message);
+			System.out.println(message.getText());
+
+		} catch (Exception e) {
+			System.out.println("[MessageProducer] Caught: " + e);
+			e.printStackTrace();
+		}
+
+	}
+	
+	public void abmelden(){
+		try {
+			producer.close();
+		} catch (Exception e) {
+		}
+		try {
+			session.close();
+		} catch (Exception e) {
+		}
+		try {
+			connection.close();
+		} catch (Exception e) {
+		}
+	}
+
 }
